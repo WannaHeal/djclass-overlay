@@ -1,0 +1,18 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "djclass-overlay"
+main = ".open-next/worker.js"
+compatibility_date = "2026-04-17"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+# Observability
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+# Define environment variables
+[vars]
+NODE_ENV = "production"
