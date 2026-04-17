@@ -2,14 +2,15 @@
 
 ## Project Overview
 
-This is a Next.js application configured for deployment on **Cloudflare Workers** using `@opennextjs/cloudflare`.
+A Next.js application deployed on **Cloudflare Workers** using `@opennextjs/cloudflare` (OpenNext adapter v1.0+). This is a modern edge-native deployment that runs on the `workerd` runtime.
 
 ## Architecture
 
 ### Deployment Platform
 - **Primary**: Cloudflare Workers with Workers Assets
-- **Build Tool**: `@opennextjs/cloudflare` (OpenNext adapter)
-- **Runtime**: `workerd` runtime (Web APIs + Node.js compat)
+- **Build Tool**: `@opennextjs/cloudflare` (OpenNext adapter v1.0+)
+- **Runtime**: `workerd` (Web APIs + Node.js compatibility)
+- **Build Output**: `.open-next/` directory
 
 ### Directory Structure
 
@@ -17,13 +18,13 @@ This is a Next.js application configured for deployment on **Cloudflare Workers*
 djclass-overlay/
 ├── app/                    # Next.js App Router
 │   ├── layout.tsx         # Root layout with metadata
-│   ├── page.tsx           # Main page (URL generator)
+│   ├── page.tsx           # Main page (URL generator form)
 │   ├── page.module.css    # Main page styles
 │   ├── globals.css        # Global styles
 │   ├── not-found.tsx      # 404 error page
 │   ├── api/
 │   │   └── djclass/
-│   │       └── route.ts   # API route
+│   │       └── route.ts   # API route (V-Archive proxy)
 │   └── overlay/
 │       ├── page.tsx       # OBS overlay page
 │       └── overlay.module.css  # Overlay styles
@@ -31,10 +32,11 @@ djclass-overlay/
 │   ├── worker.js          # Worker entry point
 │   └── assets/            # Static assets
 ├── open-next.config.ts    # OpenNext configuration
-├── wrangler.toml          # Cloudflare configuration
+├── wrangler.toml          # Cloudflare Workers configuration
 ├── next.config.ts         # Next.js configuration
 ├── package.json           # Dependencies
-└── tsconfig.json          # TypeScript config
+├── tsconfig.json          # TypeScript configuration
+└── cloudflare-env.d.ts    # Auto-generated Cloudflare types
 ```
 
 ## Key Features
@@ -44,32 +46,41 @@ djclass-overlay/
 - Generates absolute URLs with URL-encoded parameters
 - Copy-to-clipboard functionality
 - Instructions for OBS setup
+- Styled with CSS Modules (page.module.css)
 
 ### 2. Overlay Page (`app/overlay/page.tsx`)
-- Reads `user` and `mode` from URL parameters
-- Fetches DJ CLASS data from V-Archive API via internal API route
-- Displays username, mode, grade, and animated points
-- Transparent background for OBS
-- Polling every 30 seconds
-- Animated number display when points change
+- Reads `user` and `mode` from URL search parameters
+- Fetches DJ CLASS data from V-Archive API via internal API route (`/api/djclass`)
+- Displays:
+  - Username (URL-decoded)
+  - Button mode badge
+  - DJ CLASS rank (SI, SP, SU, etc.)
+  - Animated DJ Power points
+- Transparent background for OBS integration
+- Polling every 30 seconds for live updates
+- Smooth number animation using requestAnimationFrame with ease-out cubic interpolation
 
 ### 3. API Route (`app/api/djclass/route.ts`)
-- Proxies requests to V-Archive API
-- Handles CORS and data validation
-- Runs in Workers runtime via OpenNext adapter
+- Proxies requests to V-Archive API: `https://v-archive.net/api/v2/archive/{username}/djClass/{mode}`
+- Validates response data
+- Returns JSON: `{ djClass: string, djPowerConversion: number }`
+- Automatically runs in Workers runtime (no `export const runtime = 'edge'` needed)
 
 ### 4. Not Found Page (`app/not-found.tsx`)
-- Custom 404 error page
-- Simple, clean design
+- Custom 404 error page with centered layout
+- Uses globals.css for consistent styling
 
 ## API Integration
 
-The overlay fetches from V-Archive API:
-```
-https://v-archive.net/api/v2/archive/{username}/djClass/{mode}
-```
+### V-Archive API
 
-Example response format:
+Endpoint: `https://v-archive.net/api/v2/archive/{username}/djClass/{mode}`
+
+Parameters:
+- `username`: V-Archive username (URL-encoded)
+- `mode`: Button mode (4B, 5B, 6B, or 8B)
+
+Response format:
 ```json
 {
   "djClass": "SP",
@@ -77,27 +88,27 @@ Example response format:
 }
 ```
 
-TypeScript interfaces:
+TypeScript interface:
 ```typescript
 interface VArchiveResponse {
-  djClass: string;
-  djPowerConversion: number;
+  djClass: string;        // e.g., "SI", "SP", "SU", "S", etc.
+  djPowerConversion: number;  // DJ Power points with 2 decimal places
 }
 ```
 
 ## Build Commands
 
 ```bash
-# Development (Next.js dev server)
+# Development (Next.js dev server on localhost:3000)
 npm run dev
 
 # Build and preview locally with Workers runtime
 npm run preview
 
-# Build and deploy to Cloudflare
+# Build and deploy to Cloudflare Workers
 npm run deploy
 
-# Generate Cloudflare types
+# Generate Cloudflare types from wrangler.toml
 npm run cf-typegen
 
 # Type checking
@@ -109,28 +120,23 @@ npm run lint
 
 ## Deployment
 
-### Using Wrangler CLI
+### Using OpenNext CLI (Recommended)
 
-The project uses the OpenNext adapter for Cloudflare Workers:
+The project uses `@opennextjs/cloudflare` for building and deployment:
 
 ```bash
 # Preview locally (builds and runs in Workers runtime)
 npm run preview
 
-# Deploy to Cloudflare
+# Deploy to Cloudflare Workers
 npm run deploy
 ```
 
-### Automatic Configuration
-
-If you run `wrangler deploy` without configuration, Wrangler will automatically detect Next.js and generate the necessary configuration.
-
-### Manual Configuration
-
-The project includes the following configuration files:
+### Configuration Files
 
 #### wrangler.toml
 ```toml
+#:schema node_modules/wrangler/config-schema.json
 name = "djclass-overlay"
 main = ".open-next/worker.js"
 compatibility_date = "2026-04-17"
@@ -142,7 +148,16 @@ binding = "ASSETS"
 
 [observability]
 enabled = true
+head_sampling_rate = 1
+
+[vars]
+NODE_ENV = "production"
 ```
+
+Key settings:
+- `compatibility_date`: Must be `2024-09-23` or later for OpenNext support
+- `compatibility_flags`: `["nodejs_compat"]` enables Node.js API compatibility
+- `main`: Points to `.open-next/worker.js` (generated by build)
 
 #### open-next.config.ts
 ```typescript
@@ -150,10 +165,31 @@ import { defineCloudflareConfig } from "@opennextjs/cloudflare";
 export default defineCloudflareConfig();
 ```
 
-### next.config.ts
-- Trailing slashes enabled
-- Custom headers for OBS frame embedding (X-Frame-Options: ALLOWALL)
-- CORS headers configured
+Uses default Cloudflare configuration from OpenNext adapter.
+
+#### next.config.ts
+```typescript
+const nextConfig = {
+  images: { unoptimized: true },
+  trailingSlash: true,
+  poweredByHeader: false,
+  headers: async () => [
+    {
+      source: '/:path*',
+      headers: [
+        { key: 'X-Frame-Options', value: 'ALLOWALL' },
+        { key: 'Access-Control-Allow-Origin', value: '*' },
+      ],
+    },
+  ],
+};
+```
+
+Key settings:
+- `trailingSlash: true` - Better URL consistency
+- `X-Frame-Options: ALLOWALL` - Required for OBS browser source embedding
+- `Access-Control-Allow-Origin: *` - CORS for API access
+- `images.unoptimized: true` - Simplifies deployment (no Cloudflare Images required)
 
 ## Supported Next.js Features
 
@@ -161,59 +197,98 @@ The Cloudflare OpenNext adapter supports most Next.js features:
 
 | Feature | Status |
 |---------|--------|
-| App Router | Supported |
-| Pages Router | Supported |
-| Route Handlers | Supported |
-| React Server Components | Supported |
-| SSG | Supported |
-| SSR | Supported |
-| ISR | Supported |
-| Server Actions | Supported |
-| Response streaming | Supported |
-| Middleware | Supported |
-| Image optimization | Supported via Cloudflare Images |
-| Partial Prerendering (PPR) | Supported |
+| App Router | ✅ Supported |
+| Pages Router | ✅ Supported |
+| Route Handlers | ✅ Supported |
+| React Server Components | ✅ Supported |
+| SSG | ✅ Supported |
+| SSR | ✅ Supported |
+| ISR | ✅ Supported |
+| Server Actions | ✅ Supported |
+| Response streaming | ✅ Supported |
+| Middleware | ✅ Supported |
+| Image optimization | ⚠️ Use `unoptimized: true` or Cloudflare Images |
+| Partial Prerendering (PPR) | ✅ Supported |
 
 ## Styling Conventions
 
-- CSS Modules for component-scoped styles
-- Transparent backgrounds for OBS compatibility
-- Gradient accents in purple (#667eea, #764ba2)
-- Responsive design with media queries
-- Font sizes optimized for overlay readability
+- **CSS Modules**: All component-scoped styles (e.g., `page.module.css`, `overlay.module.css`)
+- **globals.css**: Global styles, CSS variables, and utility classes
+- **Transparent backgrounds**: Required for OBS compatibility (no background color on overlay)
+- **Color scheme**: Purple gradients (#667eea, #764ba2) for accents
+- **Typography**: 
+  - Integer part of points: 3rem
+  - Decimal part of points: 1.5rem
+- **Responsive**: Uses CSS custom properties for consistent spacing
 
 ## Important Implementation Details
 
-1. **URL Encoding**: Usernames are URL-encoded when generating and decoded when reading
-2. **Polling**: 30-second interval for data refresh
-3. **Animation**: Uses requestAnimationFrame with ease-out cubic interpolation
-4. **Point Display**: Integer part is larger (3rem), decimal part is smaller (1.5rem)
-5. **Error Handling**: Shows error state if API request fails
+1. **URL Encoding**: Usernames are URL-encoded when generating URLs and decoded when reading from URL parameters
+2. **Polling Interval**: 30 seconds for data refresh
+3. **Animation**: Uses `requestAnimationFrame` with ease-out cubic interpolation for number transitions
+4. **Point Display Format**: Integer part larger (3rem), decimal part smaller (1.5rem)
+5. **Error Handling**: Shows error state with message if API request fails
+6. **No Runtime Export**: With OpenNext v1.0+, no need for `export const runtime = 'edge'`
 
 ## Platform-Specific Notes
 
 ### Windows Development
-- OpenNext adapter works on Windows
+- OpenNext adapter v1.0+ works natively on Windows (no WSL required)
 - Use `npm run preview` to test locally in Workers runtime
 - Use `npm run deploy` to deploy from Windows
 
 ### Workers Runtime
-- Supports both Web Standard APIs and Node.js APIs (with nodejs_compat flag)
-- Build output goes to `.open-next/` directory
-- Assets are served via the ASSETS binding
+- Supports both Web Standard APIs and Node.js APIs (with `nodejs_compat` flag)
+- Build output goes to `.open-next/` directory (not `.vercel/output/`)
+- Assets are served via the ASSETS binding (configured in `wrangler.toml`)
 
 ## Troubleshooting
 
 ### Build Failures
-- Ensure Node.js v18+ is used
+- Ensure Node.js v18+ is used: `node --version`
 - Run `npm install` to ensure all dependencies are installed
 - Check `npm run typecheck` for TypeScript errors
+- If OpenNext build fails, try `npm run build` first to check for Next.js errors
 
 ### API Route Errors
-- The new adapter handles runtime automatically; no need for `export const runtime = 'edge'`
-- Check for Node.js-specific APIs if errors occur
+- With OpenNext v1.0+, the runtime is handled automatically
+- No need for `export const runtime = 'edge'` in route files
+- Avoid Node.js-specific APIs that aren't supported in `workerd` runtime
 
 ### Deployment Issues
-- Check that `wrangler.toml` is properly configured
-- Verify Cloudflare account has Workers enabled
-- Ensure `compatibility_date` is set to `2024-09-23` or later
+- Verify `wrangler.toml` is properly configured (especially `main` and `assets`)
+- Check Cloudflare account has Workers enabled
+- Ensure `compatibility_date` is `2024-09-23` or later
+- Run `npm run cf-typegen` if getting TypeScript errors about Cloudflare types
+
+### OBS Display Issues
+- Verify overlay URL is correct and includes `user` and `mode` parameters
+- Check that `X-Frame-Options: ALLOWALL` header is being sent
+- Ensure overlay page has transparent background (check CSS)
+- Try refreshing the browser source in OBS if data isn't updating
+
+## Dependencies
+
+Key dependencies (from package.json):
+
+```json
+{
+  "dependencies": {
+    "@opennextjs/cloudflare": "^1.0.0",
+    "next": "^15.5.2",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250417.0",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.10.0"
+  }
+}
+```
+
+## Related Documentation
+
+- [OpenNext Cloudflare Docs](https://opennext.js.org/cloudflare)
+- [Cloudflare Workers Docs](https://developers.cloudflare.com/workers/)
+- [Next.js on Workers](https://developers.cloudflare.com/workers/frameworks/framework-guides/nextjs/)
