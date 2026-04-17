@@ -54,11 +54,15 @@ djclass-overlay/
 - Displays:
   - Username (URL-decoded)
   - Button mode badge
-  - DJ CLASS rank (SI, SP, SU, etc.)
+  - DJ CLASS rank (e.g., SHOWSTOPPER III, BEAT MAESTRO I)
   - Animated DJ Power points
+  - Next DJ CLASS target with required power cutline
 - Transparent background for OBS integration
 - Polling every 30 seconds for live updates
 - Smooth number animation using requestAnimationFrame with ease-out cubic interpolation
+- **Firework effects** when rank increases (celebration animation)
+- **Rank transition animations** with glow effects when class changes
+- **Debug simulation panel** (Ctrl+Shift+D) for testing rank transitions
 
 ### 3. API Route (`app/api/djclass/route.ts`)
 - Proxies requests to V-Archive API: `https://v-archive.net/api/v2/archive/{username}/djClass/{mode}`
@@ -83,18 +87,41 @@ Parameters:
 Response format:
 ```json
 {
-  "djClass": "SP",
-  "djPowerConversion": 12345.67
+  "djClass": "SHOWSTOPPER III",
+  "djPowerConversion": 1234.5678
 }
 ```
 
 TypeScript interface:
 ```typescript
 interface VArchiveResponse {
-  djClass: string;        // e.g., "SI", "SP", "SU", "S", etc.
-  djPowerConversion: number;  // DJ Power points with 2 decimal places
+  djClass: string;        // Full class name with level, e.g., "SHOWSTOPPER III", "BEAT MAESTRO I"
+  djPowerConversion: number;  // DJ Power points with 4 decimal places
 }
 ```
+
+### DJ CLASS Progression
+
+The DJ CLASS system has 14 ranks with 4 levels each (IV → III → II → I), except:
+- **BEGINNER**: Single level (0 power)
+- **THE LORD OF DJMAX**: Highest rank, single level (9980 power)
+
+| Class | IV | III | II | I |
+|-------|-----|-----|-----|-----|
+| THE LORD OF DJMAX | - | - | - | 9980 |
+| BEAT MAESTRO | 9900 | 9930 | 9950 | 9970 |
+| SHOWSTOPPER | 9700 | 9750 | 9800 | 9850 |
+| HEADLINER | 9400 | 9500 | 9600 | 9650 |
+| TREND SETTER | 9000 | 9100 | 9200 | 9300 |
+| PROFESSIONAL | 8600 | 8700 | 8800 | 8900 |
+| HIGH CLASS | 7800 | 8000 | 8200 | 8400 |
+| PRO DJ | 7000 | 7200 | 7400 | 7600 |
+| MIDDLEMAN | 6200 | 6400 | 6600 | 6800 |
+| STREET DJ | 5200 | 5500 | 5800 | 6000 |
+| ROOKIE | 4000 | 4300 | 4600 | 4900 |
+| AMATEUR | 2400 | 2800 | 3200 | 3600 |
+| TRAINEE | 500 | 1000 | 1500 | 2000 |
+| BEGINNER | 0 | - | - | - |
 
 ## Build Commands
 

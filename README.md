@@ -80,8 +80,14 @@ djclass-overlay/
 The overlay will display:
 - Your username
 - Button mode (4B/5B/6B/8B)
-- DJ CLASS rank (SI, SP, SU, etc.)
+- DJ CLASS rank (e.g., SHOWSTOPPER III, BEAT MAESTRO I)
 - DJ Power points with animated transitions
+- Next DJ CLASS target with required power
+
+### Features
+
+- **Celebration Effects**: Firework animation triggers when you rank up
+- **Rank Transition Animations**: Smooth visual transitions with glow effects when your DJ CLASS changes
 
 ## Deployment
 
@@ -125,13 +131,34 @@ Proxies requests to V-Archive API and returns DJ CLASS data:
 
 ```json
 {
-  "djClass": "SP",
-  "djPowerConversion": 12345.67
+  "djClass": "SHOWSTOPPER III",
+  "djPowerConversion": 1234.5678
 }
 ```
 
 - **Mode**: 4B, 5B, 6B, or 8B
-- **Response**: DJ CLASS rank and power points
+- **Response**: DJ CLASS rank (full name with level) and power points
+
+### DJ CLASS Progression
+
+The DJ CLASS system has 14 ranks with 4 levels each (I, II, III, IV), except BEGINNER and THE LORD OF DJMAX:
+
+| Rank | IV | III | II | I |
+|------|-----|-----|-----|-----|
+| THE LORD OF DJMAX | - | - | - | 9980 |
+| BEAT MAESTRO | 9900 | 9930 | 9950 | 9970 |
+| SHOWSTOPPER | 9700 | 9750 | 9800 | 9850 |
+| HEADLINER | 9400 | 9500 | 9600 | 9650 |
+| TREND SETTER | 9000 | 9100 | 9200 | 9300 |
+| PROFESSIONAL | 8600 | 8700 | 8800 | 8900 |
+| HIGH CLASS | 7800 | 8000 | 8200 | 8400 |
+| PRO DJ | 7000 | 7200 | 7400 | 7600 |
+| MIDDLEMAN | 6200 | 6400 | 6600 | 6800 |
+| STREET DJ | 5200 | 5500 | 5800 | 6000 |
+| ROOKIE | 4000 | 4300 | 4600 | 4900 |
+| AMATEUR | 2400 | 2800 | 3200 | 3600 |
+| TRAINEE | 500 | 1000 | 1500 | 2000 |
+| BEGINNER | 0 | - | - | - |
 
 ## Configuration
 
