@@ -1,5 +1,7 @@
 # DJ CLASS OBS Overlay
 
+![Main Page](screenshots/main-page.png)
+
 A real-time OBS overlay for V-Archive DJ CLASS data. Built with Next.js and deployed on Cloudflare Workers using the OpenNext adapter.
 
 ## Features
@@ -9,6 +11,10 @@ A real-time OBS overlay for V-Archive DJ CLASS data. Built with Next.js and depl
 - **Animated Updates**: Smooth number animations when your points change
 - **Auto-refresh**: Data updates every 30 seconds
 - **Transparent Background**: Perfect for OBS integration
+
+## Screenshot
+
+![Overlay Page](screenshots/overlay-page.png)
 
 ## Prerequisites
 
